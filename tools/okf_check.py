@@ -139,10 +139,11 @@ def check(nodes):
             errs.append(f"{c['id']}: 利用する開発オブジェクトがない")
     # 上流で下流から参照されないもの
     referenced = {r for n in nodes.values() for _, r in refs(n)}
-    for t in ("要望", "要求"):
-        for n in by_type(nodes, t):
-            if n["_path"] not in referenced:
-                errs.append(f"{n['id']}: 下流から参照されていない（{t}）")
+    # 要望は disposition の警告で見る。要求は要件から参照されること（draft の間は警告）
+    for n in by_type(nodes, "要求"):
+        if n["_path"] not in referenced:
+            prefix = "警告 " if n.get("status") == "draft" else ""
+            errs.append(f"{prefix}{n['id']}: 要件から参照されていない（要求）")
     # ---- #34 で採用したリレーション
     actors = {a for p in by_type(nodes, "プロダクト") for a in p.get("actors") or []}
     for r in by_type(nodes, "要求"):

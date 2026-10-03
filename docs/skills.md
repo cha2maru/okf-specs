@@ -28,7 +28,7 @@ skills/<名前>/
 ```
 
 - テンプレート（`templates/okf/`）とツール（`tools/`）は全スキルで共有し、スキルの中に複製しない。
-- 作成済み：`okf-breakdown`（references：wording.md、patterns.md、examples.md）
+- 作成済み：`okf-breakdown`（references：wording.md、patterns.md、examples.md）、`okf-ruling`（references：destinations.md、questions.md、examples.md）
 
 ## スキル（部品）
 
@@ -82,4 +82,4 @@ U3 既存システムを取り込む
 | スキル | 試験 | 結果 | 運用モデル（案） |
 |---|---|---|---|
 | okf-breakdown | 1 回目：担当者の割り当て（Opus・Sonnet・Haiku）／2 回目：異常通知に写真（Opus・Sonnet、修正後） | 2 回目は両者とも要求 1・要件 1、非機能は起こさず、既存（REQ-004・SPC-006）を変えずに関係を記録。Opus は契約・画面まで読み、写真が遅れて届く等の論点を先回りして【要確認】にした。Sonnet は約半分の時間で規則を守ったが、導出 1 件の印漏れ | **Sonnet**（規則の網羅は十分。構造・契約に踏み込む論点の先回りは okf-structure 側で拾う） |
-
+| okf-ruling | 6 話題を含む発言（報告書の自動作成、夜間のまぶしさ、協力会社の利用、アプリの異常終了、コードレビューのルール、異常をもっと早く）。利用者の答えは台本で代わりに務める（Opus・Sonnet） | 両者とも 6 話題を正しく振り分け、設計の質問はしなかった。Opus は既存の要件（SPC-008 の 5 分）まで確かめて期待の差を記録した。その確認は手順に追加した | **Sonnet** |

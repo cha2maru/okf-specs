@@ -6,6 +6,7 @@ okf_version: "0.2"
 
 ## 2026-10-03
 
+- スキル okf-ruling を作成し、Opus・Sonnet で試験して改善。チェッカーは要望の「下流から参照されていない」をやめ（採否は disposition で見る）、draft の要求の未参照は警告にした。
 - okf-breakdown をサブエージェントで 2 回試験（Opus・Sonnet・Haiku → Opus・Sonnet）し、指摘を反映。チェッカーのエラー行に「エラー」の印、検索をユースケースの手順にも広げた。運用モデルの案を skills.md に記録。
 - スキル okf-breakdown を作成（skills/、プラグインの形）。ツールに search・next-id を追加。要件の契約は draft の間は警告に緩和。
 - スキル設計の案（skills.md）を作成。対象は U1・U2・U3。#42 の扱いの案を含む。
