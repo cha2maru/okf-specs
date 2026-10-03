@@ -3,6 +3,9 @@
 使い方:
   python tools/okf_check.py <bundle>               整合性チェック
   python tools/okf_check.py <bundle> impact <id>   開発オブジェクトまたは契約を変更したときの直接の影響
+  python tools/okf_check.py <bundle> search [--type T] [--status S] [--tag G] [--text 文字列]
+                                                   概念の検索（タイトル・本文の部分一致）
+  python tools/okf_check.py <bundle> next-id <接頭辞>  次の ID（例：REQ、SPC、OBJ-0201、CTR-F）
 
 版：各概念は revision を持ち、参照（from / contracts / uses）は前提にした上流の版を rev に持つ。
 上流の revision が rev より新しい参照は「要確認（古い版が前提）」として報告する。
@@ -121,7 +124,9 @@ def check(nodes):
     # 要件の種別と契約の種別
     for s in by_type(nodes, "要件"):
         if not s.get("contracts"):
-            errs.append(f"{s['id']}: 要件が契約に紐づいていない")
+            # 契約は構造設計（okf-structure）で決まる。draft の間は警告、stable ならエラー
+            prefix = "警告 " if s.get("status") == "draft" else ""
+            errs.append(f"{prefix}{s['id']}: 要件が契約に紐づいていない")
         want = "機能契約" if s.get("category") == "機能" else "非機能契約"
         for ref in s.get("contracts") or []:
             ct = nodes.get(ref["contract"], {}).get("type")
@@ -335,6 +340,28 @@ if __name__ == "__main__":
         errors += check(nodes) + stale(nodes)
         print(f"{len(nodes)} concepts")
         print("\n".join(errors) if errors else "OK")
+    elif sys.argv[2] == "search":
+        args = sys.argv[3:]
+        opt = {args[i]: args[i + 1] for i in range(0, len(args) - 1, 2)}
+        for n in sorted(nodes.values(), key=lambda n: n.get("id", "")):
+            if "--type" in opt and n.get("type") != opt["--type"]:
+                continue
+            if "--status" in opt and n.get("status") != opt["--status"]:
+                continue
+            if "--tag" in opt and opt["--tag"] not in (n.get("tags") or []):
+                continue
+            if "--text" in opt and opt["--text"] not in (str(n.get("title", "")) + n["_body"]):
+                continue
+            print(f"{n.get('id', ''):<12} {n.get('type', ''):<8} {n.get('status', ''):<7} {n.get('title', '')}  {n['_path']}")
+    elif sys.argv[2] == "next-id":
+        prefix = sys.argv[3]
+        # 接頭辞が数字で終わる（OBJ-0201、CMP-02）なら区切りなしで続け番号、そうでなければ「-」で区切る
+        sep = "" if prefix[-1].isdigit() or prefix.endswith("-") else "-"
+        head = prefix + sep
+        nums = [n["id"][len(head):] for n in nodes.values() if str(n.get("id", "")).startswith(head)]
+        nums = [x for x in nums if x.isdigit()]
+        width = max([len(x) for x in nums] or [2 if prefix[-1].isdigit() else 3])
+        print(f"{head}{max([int(x) for x in nums] or [0]) + 1:0{width}d}")
     elif sys.argv[2] == "impact":
         for kind, n in impact(nodes, sys.argv[3]):
             print(f"{kind:<6} {n['id']:<12} {n['title']}")

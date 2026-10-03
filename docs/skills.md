@@ -1,0 +1,76 @@
+---
+type: Design Document
+title: スキル設計
+description: U1・U2・U3 を対象にしたスキル（部品）とワークフローの設計案
+status: draft
+tags: [skill, workflow]
+---
+
+# スキル設計（案）
+
+対象：[ユースケース](/usecases.md) の U1（要望 1 つからシステムを作る）、U2（既存に要望を足す）、U3（既存システムを取り込む）。
+
+## 方針
+
+- スキルは[共通する部品](/usecases.md)の単位で作り、ユースケースは部品を組み合わせたワークフローにする。
+- OKF ⇔ 文書の変換は機械化できないためスキル（Claude）が行う。機械的にできること（チェック、検索、影響分析、ID の採番）はツールで行い、スキルはツールの結果を材料にする。
+- どのスキルも、終わりに `tools/okf_check.py` を実行し、エラーが残っていれば止まる。
+- 人の判断が要るところ（**ゲート**）では、スキルは提案までにとどめ、人の了承を得てから OKF を確定（stable）させる。
+- 書くときは `templates/okf/` のテンプレートと `templates/okf/examples/` の例に従う。
+- 置き場所：最終的にはスキル・テンプレート・ツールを 1 つの Claude Code プラグインにまとめ、プロダクトのリポジトリに入れて使う。当面はこのリポジトリをプラグインの形（`.claude-plugin/plugin.json`、`skills/`、`templates/okf/`、`tools/`）にしておき、`.claude/skills/` からジャンクションで参照して試す。
+
+## スキルの構造
+
+```
+skills/<名前>/
+├── SKILL.md        本体。フロントマター（name、description）＋手順・ゲート・チェック。短く保つ
+└── references/     必要な場面でだけ読む参照ファイル（書き方の規則、パターン、良い例・悪い例）
+```
+
+- テンプレート（`templates/okf/`）とツール（`tools/`）は全スキルで共有し、スキルの中に複製しない。
+- 作成済み：`okf-breakdown`（references：wording.md、patterns.md、examples.md）
+
+## スキル（部品）
+
+| スキル | 役割 | 入力 | 出力（OKF） | 使うツール | ゲート |
+|---|---|---|---|---|---|
+| okf-ruling | 裁定。発言を受けて質問し、行き先を決める | 利用者の発言 | 裁定、要望（disposition 未整理） | 採番 | 行き先の確定 |
+| okf-match | 既存との照合。新しい要望・要求・要件を既存のものに対応づける | 要望・要求・要件 | 既存への紐づけ（from の追加）か、新規の提案 | 検索 | 既存で満たせるかの判断 |
+| okf-breakdown | ブレークダウン。要望 → 要求 → 要件と受入基準 | 採用した要望 | 要求（actor・usecase）、要件（acceptance） | 採番、チェック | 要求の確定 |
+| okf-structure | 構造・契約の設計。システム・コンポーネント・契約（elements・配分）を決め、開発オブジェクトの骨組みを起こす | 要件 | システム、コンポーネント、契約、開発オブジェクト（骨組み）、要件の contracts | 採番、チェック（突合・配分の合計） | 構造の切り方、契約の境界 |
+| okf-detail | 詳細化。開発オブジェクトの本文と uses を書く | 開発オブジェクトの骨組み、契約 | 開発オブジェクトの本文・uses・entities 等 | チェック | ― |
+| okf-change | 改版と影響分析。revision を上げ、log.md に理由を書き、要確認を解消して rev を上げる | 変更したい概念 | 改版、log.md、rev の更新 | 影響分析、古い参照の検出 | 契約が変わるかの判断（契約は防波堤） |
+| okf-read | 読み取り。コード・OpenAPI・DDL・IaC・既存の設計書から OKF を起こす | 既存の成果物 | 構造、契約、開発オブジェクト（本文つき） | チェック（突合） | 起こした内容の確認 |
+| okf-write | 書き出し。OKF から機能設計書・契約書・SDD の Spec を書く | OKF | 文書（samples/out 相当） | 導出情報（okf_render.py） | 文書のレビュー |
+
+検索（U10）は独立したスキルにせず、ツールのコマンドとして全スキルから使う。
+
+## ワークフロー
+
+```
+U1 要望 1 つからシステムを作る
+  okf-ruling ─▶ okf-breakdown ─▶ okf-structure ─▶ okf-detail ─▶ okf-write
+     [行き先]       [要求の確定]      [構造・契約]                  [文書レビュー]
+
+U2 既存のプロダクトに要望を足す
+  okf-ruling ─▶ okf-match ─┬─▶（既存で満たせる）from を足して終わり
+                           └─▶ okf-breakdown（差分）─▶ okf-structure（差分）
+                                 ─▶ okf-change（既存の契約を改版するとき）─▶ okf-detail ─▶ okf-write
+
+U3 既存システムを取り込む
+  okf-read ─▶ okf-detail ─▶ 要件の逆算（okf-breakdown の逆向き）─▶ 裁定「既存」─▶ okf-check ─▶ レビュー
+```
+
+## U3 の出典不明の扱い（#42 の案）
+
+- 取り込み 1 回につき、裁定を 1 つ起こす（`kind: 既存`、やりとりの代わりに取り込んだ成果物の一覧を記録）。
+- 逆算した要件・要求には、それぞれの由来としてこの裁定から起こした要望（`disposition: 採用`、`stakeholder: 既存システム`）をつなぐ。リレーションのチェックはそのまま通る。
+- 逆算した要件・要求は `status: draft` のまま置き、人が確認したものから `stable` に上げる。`tags: [逆算]` を付けて検索できるようにする。
+
+## ツールに足すもの
+
+| コマンド | 用途 |
+|---|---|
+| `okf_check.py <bundle> search …` | 種別・状態・タグ・文字列での検索（U10、照合の材料） |
+| `okf_check.py <bundle> next-id <種別>` | ID の採番 |
+| `okf_check.py <bundle> stale` | 古い版を前提にした参照の一覧（okf-change の材料。今は整合性チェックに含まれる） |
