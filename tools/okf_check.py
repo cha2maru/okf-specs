@@ -18,6 +18,8 @@ import yaml
 
 RESERVED = {"index.md", "log.md"}
 DATA_KINDS = {"テーブル", "ファイル"}
+# サーバー側で動く開発オブジェクトの種別（実行環境に載せる・接続情報を使う対象）
+SERVER_KINDS = {"API", "イベント処理", "バッチ", "オンライン処理"}
 
 
 def load(bundle: Path):
@@ -78,6 +80,14 @@ def refs(n):
     for u in n.get("usecase") or []:
         if u.get("screen"):
             yield "usecase", u["screen"]
+
+
+def system_path(nodes, path):
+    """開発オブジェクトの属するシステムのパス。"""
+    n = nodes.get(path)
+    while n and n.get("type") != "システム":
+        n = nodes.get(n.get("parent"))
+    return n["_path"] if n else None
 
 
 def by_type(nodes, t):
@@ -242,6 +252,20 @@ def check(nodes):
             total = sum(a.get("amount", 0) for a in allocs if a.get("role") == "加算")
             if total > c["target_amount"]:
                 errs.append(f"{c['id']}: 加算の合計 {total}{c.get('unit', '')} が目標 {c['target_amount']}{c.get('unit', '')} を超える")
+    # 実行環境に載っていないサーバー側の開発オブジェクト（実行環境＝hosts を持つ IaC リソースがある場合だけ）
+    hosted = {h for o in by_type(nodes, "開発オブジェクト") for h in o.get("hosts") or []}
+    if hosted:
+        host_systems = {system_path(nodes, h) for h in hosted if h in nodes}
+        for o in by_type(nodes, "開発オブジェクト"):
+            if o.get("kind") in SERVER_KINDS and o["_path"] not in hosted and system_path(nodes, o["_path"]) in host_systems:
+                errs.append(f"警告 {o['id']} {o['title']}: どの実行環境（hosts）にも載っていない")
+    # 論理の契約（ER 図・キー規約）を使うのに、それを実現する接続情報の契約を使っていない
+    realized = {c["realizes"]: c["_path"] for c in by_type(nodes, "機能契約") if c.get("realizes")}
+    for o in by_type(nodes, "開発オブジェクト"):
+        used = {u["contract"] for u in o.get("uses") or []}
+        for logical, physical in realized.items():
+            if logical in used and physical not in used and o.get("kind") in SERVER_KINDS:
+                errs.append(f"警告 {o['id']}: {nodes[logical]['id']} を使うが、それを実現する {nodes[physical]['id']} を使っていない")
     # 書き込む開発オブジェクトがないデータ
     for d in by_type(nodes, "開発オブジェクト"):
         if d.get("kind") not in DATA_KINDS:
@@ -344,7 +368,14 @@ if __name__ == "__main__":
         print("\n".join(marked) if marked else "OK")
     elif sys.argv[2] == "search":
         args = sys.argv[3:]
-        opt = {args[i]: args[i + 1] for i in range(0, len(args) - 1, 2)}
+        opt, i = {}, 0
+        while i < len(args):
+            if args[i].startswith("--") and i + 1 < len(args):
+                opt[args[i]] = args[i + 1]
+                i += 2
+            else:  # 位置引数は --text として扱う
+                opt["--text"] = args[i]
+                i += 1
         for n in sorted(nodes.values(), key=lambda n: n.get("id", "")):
             if "--type" in opt and n.get("type") != opt["--type"]:
                 continue

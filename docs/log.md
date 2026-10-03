@@ -6,6 +6,8 @@ okf_version: "0.2"
 
 ## 2026-10-03
 
+- スキル okf-structure を作成し、Opus・Sonnet で試験して改善。チェッカーに「実行環境に載っていない」「接続情報の契約を使っていない」の警告を追加。search の位置引数を --text として扱う。README を追加。
+- 今後の課題に #46（設計・実装で生まれる制約の管理と、要件との矛盾）を追加。
 - スキル okf-ruling を作成し、Opus・Sonnet で試験して改善。チェッカーは要望の「下流から参照されていない」をやめ（採否は disposition で見る）、draft の要求の未参照は警告にした。
 - okf-breakdown をサブエージェントで 2 回試験（Opus・Sonnet・Haiku → Opus・Sonnet）し、指摘を反映。チェッカーのエラー行に「エラー」の印、検索をユースケースの手順にも広げた。運用モデルの案を skills.md に記録。
 - スキル okf-breakdown を作成（skills/、プラグインの形）。ツールに search・next-id を追加。要件の契約は draft の間は警告に緩和。
