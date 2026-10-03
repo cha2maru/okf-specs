@@ -6,10 +6,11 @@ title: 点検API
 provider: /structure/CMP-0201.md
 format: OpenAPI
 thickness: 厚い
+elements: [POST /inspections, "PUT /inspections/{id}/photos/{n}"]
 status: draft
 ---
 
-# CTR-F-001：点検API（モバイルアプリ ⇔ クラウドバックエンド）
+# CTR-F-001：点検API
 
 システムをまたぐため厚い契約。
 

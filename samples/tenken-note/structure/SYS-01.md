@@ -6,7 +6,6 @@ title: モバイルアプリ
 kind: アプリ
 parent: /structure/PRD-001.md
 status: draft
-
 ---
 
 # SYS-01：モバイルアプリ

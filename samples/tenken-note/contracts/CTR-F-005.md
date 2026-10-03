@@ -6,11 +6,12 @@ title: メール送信
 provider: /structure/CMP-0501.md
 format: 外部API仕様
 thickness: 厚い
+elements: [POST /v1/send]
 resource: https://example.com/mail-service/api-docs
 status: draft
 ---
 
-# CTR-F-005：メール送信（クラウドバックエンド ⇔ 外部メール配信サービス）
+# CTR-F-005：メール送信
 
 提供者が外部のため、契約の内容は先方の公開仕様への参照と、利用する範囲の取り決めのみ。
 

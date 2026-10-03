@@ -6,10 +6,11 @@ title: 異常イベント
 provider: /structure/CMP-0203.md
 format: メッセージ定義
 thickness: 薄い
+elements: [異常イベント]
 status: draft
 ---
 
-# CTR-F-007：異常イベント（クラウドバックエンド内）
+# CTR-F-007：異常イベント
 
 異常通知コンポーネントが「受け付けるメッセージ」として提供する。点検 API が発行側として利用する。
 

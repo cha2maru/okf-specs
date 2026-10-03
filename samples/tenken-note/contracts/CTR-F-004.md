@@ -6,10 +6,11 @@ title: 管理API
 provider: /structure/CMP-0202.md
 format: OpenAPI
 thickness: 厚い
+elements: [GET /sites/progress]
 status: draft
 ---
 
-# CTR-F-004：管理API（管理ダッシュボード ⇔ クラウドバックエンド）
+# CTR-F-004：管理API
 
 ```yaml
 openapi: 3.1.0

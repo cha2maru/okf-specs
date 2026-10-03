@@ -6,10 +6,11 @@ title: 点検DB
 provider: /structure/CMP-0204.md
 format: ER図
 thickness: 厚い
+elements: [拠点, 設備, 点検結果]
 status: draft
 ---
 
-# CTR-F-003：点検DB（クラウドバックエンド内）
+# CTR-F-003：点検DB
 
 同一システム内だが、複数コンポーネント（点検API・管理API・異常通知）から使われるため ER 図を持つ。
 

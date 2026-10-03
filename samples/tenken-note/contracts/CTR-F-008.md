@@ -6,10 +6,12 @@ title: DB接続
 provider: /structure/CMP-0402.md
 format: 接続情報定義
 thickness: 厚い
+elements: [DB_HOST, port, database, credentials_secret]
+realizes: /contracts/CTR-F-003.md
 status: draft
 ---
 
-# CTR-F-008：DB接続（クラウド基盤 ⇔ クラウドバックエンド）
+# CTR-F-008：DB接続
 
 IaC が提供する DB の接続先。アプリはこの取り決めだけに依存し、クラスタの構成には依存しない。
 

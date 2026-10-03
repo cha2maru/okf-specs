@@ -12,10 +12,10 @@ PRD-001 点検ノート
 │       └─ OBJ-010301 同期処理（バックグラウンド処理）
 ├─ SYS-02 クラウドバックエンド（アプリ）
 │   ├─ CMP-0201 点検API（API定義）
-│   │   ├─ OBJ-020101 POST /inspections（API）
-│   │   └─ OBJ-020102 PUT /inspections/{id}/photos/{n}（API）
+│   │   ├─ OBJ-020101 点検結果登録API（API：POST /inspections）
+│   │   └─ OBJ-020102 点検写真登録API（API：PUT /inspections/{id}/photos/{n}）
 │   ├─ CMP-0202 管理API（API定義）
-│   │   └─ OBJ-020201 GET /sites/progress（API）
+│   │   └─ OBJ-020201 拠点進捗取得API（API：GET /sites/progress）
 │   ├─ CMP-0203 異常通知（機能群）
 │   │   └─ OBJ-020301 異常通知処理（イベント処理）
 │   ├─ CMP-0204 点検DB（データストア）

@@ -6,7 +6,6 @@ title: 管理ダッシュボード
 kind: アプリ
 parent: /structure/PRD-001.md
 status: draft
-
 ---
 
 # SYS-03：管理ダッシュボード

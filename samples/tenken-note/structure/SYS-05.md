@@ -6,7 +6,6 @@ title: 外部メール配信サービス
 kind: 外部
 parent: /structure/PRD-001.md
 status: draft
-
 ---
 
 # SYS-05：外部メール配信サービス

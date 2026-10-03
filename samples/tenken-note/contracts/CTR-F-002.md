@@ -6,10 +6,11 @@ title: ローカルストア
 provider: /structure/CMP-0102.md
 format: 端末内スキーマ
 thickness: 薄い
+elements: [ローカル点検]
 status: draft
 ---
 
-# CTR-F-002：ローカルストア（モバイルアプリ内）
+# CTR-F-002：ローカルストア
 
 同一システム内のため薄い契約。テーブル名と主要項目のみ。
 

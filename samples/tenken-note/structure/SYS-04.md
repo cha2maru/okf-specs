@@ -6,7 +6,6 @@ title: クラウド基盤
 kind: 基盤
 parent: /structure/PRD-001.md
 status: draft
-
 ---
 
 # SYS-04：クラウド基盤

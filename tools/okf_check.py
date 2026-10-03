@@ -7,6 +7,7 @@
 版：各概念は revision を持ち、参照（from / contracts / uses）は前提にした上流の版を rev に持つ。
 上流の revision が rev より新しい参照は「要確認（古い版が前提）」として報告する。
 """
+import re
 import sys
 from pathlib import Path
 
@@ -37,6 +38,11 @@ def load(bundle: Path):
     return nodes, errors
 
 
+def section_text(body, name):
+    m = re.search(rf"^## {re.escape(name)}\n(.*?)(?=^## |\Z)", body, re.M | re.S)
+    return m.group(1) if m else ""
+
+
 def contract_refs(n):
     """要件の contracts と開発オブジェクトの uses を共通の形で返す。"""
     return (n.get("contracts") or []) + (n.get("uses") or [])
@@ -51,9 +57,12 @@ def refs(n):
     """ノードが持つ参照を (関係名, 参照先) で列挙する。"""
     for r in n.get("from") or []:
         yield "from", r
-    for f in ("parent", "provider"):
+    for f in ("parent", "provider", "realizes"):
         if n.get(f):
             yield f, n[f]
+    for f in ("depends_on", "hosts", "transitions"):
+        for r in n.get(f) or []:
+            yield f, r
     for ref in contract_refs(n):
         yield "contract", ref["contract"]
         for t in targets(ref):
@@ -61,6 +70,8 @@ def refs(n):
     for a in n.get("allocations") or []:
         for x in targets(a):
             yield "allocation", x
+        if a.get("within"):
+            yield "within", a["within"]
     for u in n.get("usecase") or []:
         if u.get("screen"):
             yield "usecase", u["screen"]
@@ -127,6 +138,104 @@ def check(nodes):
         for n in by_type(nodes, t):
             if n["_path"] not in referenced:
                 errs.append(f"{n['id']}: 下流から参照されていない（{t}）")
+    # ---- #34 で採用したリレーション
+    actors = {a for p in by_type(nodes, "プロダクト") for a in p.get("actors") or []}
+    for r in by_type(nodes, "要求"):
+        acts = r.get("actor")
+        acts = [acts] if isinstance(acts, str) else (acts or [])
+        if not acts:
+            errs.append(f"警告 {r['id']}: actor がない（主語が利用者・業務でない例外なら本文に理由を書く）")
+        for a in acts:
+            if a not in actors:
+                errs.append(f"{r['id']}: actor「{a}」がプロダクトの actors にない")
+    for o in by_type(nodes, "開発オブジェクト"):
+        if o.get("kind") == "画面":
+            for a in o.get("roles") or []:
+                if a not in actors:
+                    errs.append(f"{o['id']}: roles「{a}」がプロダクトの actors にない")
+            if not o.get("roles"):
+                errs.append(f"警告 {o['id']}: 画面に roles がない")
+            for t in o.get("transitions") or []:
+                if t in nodes and nodes[t].get("kind") != "画面":
+                    errs.append(f"{o['id']}: transitions の {nodes[t]['id']} が画面ではない")
+            body_ids = set(re.findall(r"OBJ-\d+", section_text(o["_body"], "画面遷移")))
+            fm_ids = {nodes[t]["id"] for t in o.get("transitions") or [] if t in nodes}
+            if body_ids and body_ids - {o["id"]} != fm_ids:
+                errs.append(f"{o['id']}: 本文の画面遷移の遷移先 {sorted(body_ids - {o['id']})} と transitions {sorted(fm_ids)} が一致しない")
+        for f in ("depends_on", "hosts"):
+            for t in o.get(f) or []:
+                if t not in nodes:
+                    continue
+                is_iac = nodes[t].get("kind") == "IaCリソース"
+                if f == "depends_on" and not is_iac:
+                    errs.append(f"{o['id']}: depends_on の {nodes[t]['id']} が IaC リソースではない")
+                if f == "hosts" and is_iac:
+                    errs.append(f"{o['id']}: hosts の {nodes[t]['id']} が IaC リソースである")
+    # depends_on の循環
+    def walk(p, seen):
+        for t in nodes[p].get("depends_on") or []:
+            if t == seen[0]:
+                return True
+            if t in nodes and t not in seen and walk(t, seen + [t]):
+                return True
+        return False
+    for o in by_type(nodes, "開発オブジェクト"):
+        if o.get("depends_on") and walk(o["_path"], [o["_path"]]):
+            errs.append(f"{o['id']}: depends_on が循環している")
+    for w in by_type(nodes, "要望"):
+        used = any(w["_path"] in (r.get("from") or []) for r in by_type(nodes, "要求"))
+        d = w.get("disposition")
+        if d == "採用" and not used:
+            errs.append(f"警告 {w['id']}: 採用の要望が要求につながっていない")
+        if d in ("却下", "保留") and used:
+            errs.append(f"警告 {w['id']}: {d}の要望が要求につながっている")
+        if not d:
+            errs.append(f"警告 {w['id']}: disposition がない")
+    for c in by_type(nodes, "機能契約"):
+        if c.get("realizes") and nodes.get(c["realizes"], {}).get("type") != "機能契約":
+            errs.append(f"{c['id']}: realizes の先が機能契約ではない")
+    # 突合：契約の elements と提供コンポーネント配下の開発オブジェクト
+    for c in by_type(nodes, "機能契約"):
+        els = [str(e) for e in c.get("elements") or []]
+        if not els:
+            errs.append(f"警告 {c['id']}: elements がない")
+            continue
+        objs = [o for o in by_type(nodes, "開発オブジェクト") if o.get("parent") == c.get("provider")]
+        fmt = c.get("format")
+        if fmt == "OpenAPI":
+            have = {o.get("operation") for o in objs if o.get("operation")}
+        elif fmt in ("ER図", "端末内スキーマ", "キー規約"):
+            have = {e for o in objs for e in o.get("entities") or []}
+        else:
+            continue
+        for e in els:
+            if e not in have:
+                errs.append(f"突合 {c['id']}: 「{e}」に対応する開発オブジェクトがない（裁定の対象）")
+        for e in sorted(have - set(els)):
+            errs.append(f"突合 {c['id']}: 開発オブジェクトの「{e}」が契約の elements にない（裁定の対象）")
+    # 非機能の配分：role・amount・within と合計
+    for c in by_type(nodes, "非機能契約"):
+        allocs = c.get("allocations") or []
+        tgts = {t for a in allocs for t in targets(a)}
+        by_target = {t: a for a in allocs for t in targets(a)}
+        for a in allocs:
+            role = a.get("role")
+            if role and role not in ("加算", "内包", "条件"):
+                errs.append(f"{c['id']}: role「{role}」が不正")
+            if role in ("加算", "内包") and not isinstance(a.get("amount"), (int, float)):
+                errs.append(f"{c['id']}: role {role} の配分に数値の amount がない")
+            if role == "内包":
+                w = a.get("within")
+                if w not in tgts:
+                    errs.append(f"{c['id']}: 内包の within が同じ契約の配分先を指していない")
+                elif isinstance(by_target[w].get("amount"), (int, float)) and a.get("amount", 0) > by_target[w]["amount"]:
+                    errs.append(f"{c['id']}: 内包の amount {a['amount']} が within の amount {by_target[w]['amount']} を超える")
+        if isinstance(c.get("target_amount"), (int, float)):
+            if any(not a.get("role") for a in allocs):
+                errs.append(f"警告 {c['id']}: target_amount があるのに role のない配分がある")
+            total = sum(a.get("amount", 0) for a in allocs if a.get("role") == "加算")
+            if total > c["target_amount"]:
+                errs.append(f"{c['id']}: 加算の合計 {total}{c.get('unit', '')} が目標 {c['target_amount']}{c.get('unit', '')} を超える")
     # 書き込む開発オブジェクトがないデータ
     for d in by_type(nodes, "開発オブジェクト"):
         if d.get("kind") not in DATA_KINDS:
