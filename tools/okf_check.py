@@ -4,7 +4,7 @@
   python tools/okf_check.py <bundle>               整合性チェック
   python tools/okf_check.py <bundle> impact <id>   開発オブジェクトまたは契約を変更したときの直接の影響
   python tools/okf_check.py <bundle> search [--type T] [--status S] [--tag G] [--text 文字列]
-                                                   概念の検索（タイトル・本文の部分一致）
+                                                   概念の検索（タイトル・本文・ユースケースの手順の部分一致）
   python tools/okf_check.py <bundle> next-id <接頭辞>  次の ID（例：REQ、SPC、OBJ-0201、CTR-F）
 
 版：各概念は revision を持ち、参照（from / contracts / uses）は前提にした上流の版を rev に持つ。
@@ -338,8 +338,9 @@ if __name__ == "__main__":
     nodes, errors = load(bundle)
     if len(sys.argv) == 2:
         errors += check(nodes) + stale(nodes)
-        print(f"{len(nodes)} concepts")
-        print("\n".join(errors) if errors else "OK")
+        marked = [e if e.split(" ", 1)[0] in ("警告", "突合", "要確認") else f"エラー {e}" for e in errors]
+        print(f"概念 {len(nodes)} 件")
+        print("\n".join(marked) if marked else "OK")
     elif sys.argv[2] == "search":
         args = sys.argv[3:]
         opt = {args[i]: args[i + 1] for i in range(0, len(args) - 1, 2)}
@@ -350,7 +351,8 @@ if __name__ == "__main__":
                 continue
             if "--tag" in opt and opt["--tag"] not in (n.get("tags") or []):
                 continue
-            if "--text" in opt and opt["--text"] not in (str(n.get("title", "")) + n["_body"]):
+            hay = str(n.get("title", "")) + n["_body"] + " ".join(str(u.get("step", "")) for u in n.get("usecase") or [])
+            if "--text" in opt and opt["--text"] not in hay:
                 continue
             print(f"{n.get('id', ''):<12} {n.get('type', ''):<8} {n.get('status', ''):<7} {n.get('title', '')}  {n['_path']}")
     elif sys.argv[2] == "next-id":

@@ -6,6 +6,7 @@ okf_version: "0.2"
 
 ## 2026-10-03
 
+- okf-breakdown をサブエージェントで 2 回試験（Opus・Sonnet・Haiku → Opus・Sonnet）し、指摘を反映。チェッカーのエラー行に「エラー」の印、検索をユースケースの手順にも広げた。運用モデルの案を skills.md に記録。
 - スキル okf-breakdown を作成（skills/、プラグインの形）。ツールに search・next-id を追加。要件の契約は draft の間は警告に緩和。
 - スキル設計の案（skills.md）を作成。対象は U1・U2・U3。#42 の扱いの案を含む。
 - ユースケース（U1〜U16）と共通する部品を記録（usecases.md）。流れが変わる可能性のあるもの（U3・U5・U8・U11・U15・U16）を今後の課題として #41〜#45 に追記。
